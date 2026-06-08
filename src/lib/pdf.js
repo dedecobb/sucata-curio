@@ -6,6 +6,7 @@ const EMPRESA = {
   telefone: "(65) 99264-4949",
   endereco: "Av. Agrícola Paes de Barros, Nº 1632",
   bairro: "Bairro Porto - Cuiabá/MT",
+  cnpj: "65.276.996/0001-08",
 };
 
 function formatarReais(valor) {
@@ -29,20 +30,27 @@ export function gerarReciboPDF(compra) {
   const doc = new jsPDF({ unit: "mm", format: "a5" });
   const largura = doc.internal.pageSize.getWidth();
 
+  // ---- LOGO ----
+  // Certifique-se que o arquivo está em /public/logo_sucata.jpeg
+  doc.addImage("/logo_sucata.jpeg", "JPEG", 10, 10, 40, 15);
+
   // ---- Cabeçalho ----
-  doc.setFontSize(18);
+  doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
-  doc.text(EMPRESA.nome, largura / 2, 18, { align: "center" });
+  doc.text(EMPRESA.nome, largura / 2 + 10, 16, { align: "center" });
 
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
-  doc.text(`Tel: ${EMPRESA.telefone}`, largura / 2, 24, { align: "center" });
-  doc.text(EMPRESA.endereco, largura / 2, 28, { align: "center" });
-  doc.text(EMPRESA.bairro, largura / 2, 32, { align: "center" });
+  doc.text(`Tel: ${EMPRESA.telefone}`, largura / 2 + 10, 21, {
+    align: "center",
+  });
+  doc.text(EMPRESA.endereco, largura / 2 + 10, 25, { align: "center" });
+  doc.text(EMPRESA.bairro, largura / 2 + 10, 29, { align: "center" });
+  doc.text(`CNPJ: ${EMPRESA.cnpj}`, largura / 2 + 10, 33, { align: "center" });
 
   // Linha divisória
   doc.setDrawColor(180);
-  doc.line(10, 36, largura - 10, 36);
+  doc.line(10, 38, largura - 10, 38);
 
   // ---- Dados do recibo ----
   doc.setFontSize(10);
@@ -50,21 +58,22 @@ export function gerarReciboPDF(compra) {
   doc.text(
     `RECIBO Nº ${String(compra.numero_recibo).padStart(4, "0")}`,
     10,
-    43,
+    45,
   );
+
   doc.setFont("helvetica", "normal");
-  doc.text(`Data: ${formatarData(compra.data_hora)}`, largura - 10, 43, {
+  doc.text(`Data: ${formatarData(compra.data_hora)}`, largura - 10, 45, {
     align: "right",
   });
 
   if (compra.cliente_nome) {
-    doc.text(`Cliente: ${compra.cliente_nome}`, 10, 49);
+    doc.text(`Cliente: ${compra.cliente_nome}`, 10, 51);
   }
 
   doc.text(
     `Pagamento: ${compra.forma_pagamento || "Dinheiro"}`,
     largura - 10,
-    49,
+    51,
     { align: "right" },
   );
 
@@ -77,7 +86,7 @@ export function gerarReciboPDF(compra) {
   ]);
 
   autoTable(doc, {
-    startY: 54,
+    startY: 56,
     head: [["Material", "Peso", "Preço/kg", "Total"]],
     body: linhas,
     theme: "grid",
@@ -143,6 +152,7 @@ export function abrirPDFNovaAba(compra) {
 export function compartilharWhatsApp(compra) {
   const num = String(compra.numero_recibo).padStart(4, "0");
   const data = new Date(compra.data_hora).toLocaleDateString("pt-BR");
+
   const itens = compra.itens_compra
     .map(
       (i) =>
