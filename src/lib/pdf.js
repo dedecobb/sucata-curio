@@ -1,13 +1,62 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { supabase } from "./supabase";
 
-const EMPRESA = {
+const EMPRESA_PADRAO = {
   nome: "Sucata Curió",
   telefone: "(65) 99264-4949",
   endereco: "Av. Agrícola Paes de Barros, Nº 1632",
   bairro: "Bairro Porto - Cuiabá/MT",
   cnpj: "65.276.996/0001-08",
+  logo_url: "/logo_sucata.jpeg",
 };
+
+async function buscarEmpresa(compra) {
+  let query = supabase
+    .from("companies")
+    .select("nome, telefone, endereco, bairro, cnpj, logo_url");
+
+  if (compra?.company_id) {
+    query = query.eq("id", compra.company_id);
+  }
+
+  const { data, error } = await query.limit(1).maybeSingle();
+
+  if (error || !data) return EMPRESA_PADRAO;
+
+  return {
+    ...EMPRESA_PADRAO,
+    ...Object.fromEntries(
+      Object.entries(data).filter(([, valor]) => valor !== null && valor !== ""),
+    ),
+  };
+}
+
+async function carregarImagemComoDataUrl(url) {
+  if (!url) return null;
+
+  try {
+    const resposta = await fetch(url);
+    if (!resposta.ok) return null;
+
+    const blob = await resposta.blob();
+
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
+function obterFormatoImagem(dataUrl) {
+  if (dataUrl?.startsWith("data:image/png")) return "PNG";
+  if (dataUrl?.startsWith("data:image/webp")) return "WEBP";
+  return "JPEG";
+}
 
 function formatarReais(valor) {
   return Number(valor).toLocaleString("pt-BR", {
@@ -26,27 +75,30 @@ function formatarData(dataIso) {
   });
 }
 
-export function gerarReciboPDF(compra) {
+export async function gerarReciboPDF(compra) {
+  const empresa = await buscarEmpresa(compra);
+  const logoDataUrl = await carregarImagemComoDataUrl(empresa.logo_url);
   const doc = new jsPDF({ unit: "mm", format: "a5" });
   const largura = doc.internal.pageSize.getWidth();
 
   // ---- LOGO ----
-  // Certifique-se que o arquivo está em /public/logo_sucata.jpeg
-  doc.addImage("/logo_sucata.jpeg", "JPEG", 10, 10, 40, 15);
+  if (logoDataUrl) {
+    doc.addImage(logoDataUrl, obterFormatoImagem(logoDataUrl), 10, 10, 40, 15);
+  }
 
   // ---- Cabeçalho ----
   doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
-  doc.text(EMPRESA.nome, largura / 2 + 10, 16, { align: "center" });
+  doc.text(empresa.nome, largura / 2 + 10, 16, { align: "center" });
 
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
-  doc.text(`Tel: ${EMPRESA.telefone}`, largura / 2 + 10, 21, {
+  doc.text(`Tel: ${empresa.telefone}`, largura / 2 + 10, 21, {
     align: "center",
   });
-  doc.text(EMPRESA.endereco, largura / 2 + 10, 25, { align: "center" });
-  doc.text(EMPRESA.bairro, largura / 2 + 10, 29, { align: "center" });
-  doc.text(`CNPJ: ${EMPRESA.cnpj}`, largura / 2 + 10, 33, { align: "center" });
+  doc.text(empresa.endereco, largura / 2 + 10, 25, { align: "center" });
+  doc.text(empresa.bairro, largura / 2 + 10, 29, { align: "center" });
+  doc.text(`CNPJ: ${empresa.cnpj}`, largura / 2 + 10, 33, { align: "center" });
 
   // Linha divisória
   doc.setDrawColor(180);
@@ -137,19 +189,26 @@ export function gerarReciboPDF(compra) {
   return doc;
 }
 
-export function baixarPDF(compra) {
-  const doc = gerarReciboPDF(compra);
+export async function baixarPDF(compra) {
+  const doc = await gerarReciboPDF(compra);
   doc.save(`recibo-${String(compra.numero_recibo).padStart(4, "0")}.pdf`);
 }
 
-export function abrirPDFNovaAba(compra) {
-  const doc = gerarReciboPDF(compra);
+export async function abrirPDFNovaAba(compra) {
+  const aba = window.open("", "_blank");
+  const doc = await gerarReciboPDF(compra);
   const blob = doc.output("blob");
   const url = URL.createObjectURL(blob);
-  window.open(url, "_blank");
+  if (aba) {
+    aba.location.href = url;
+  } else {
+    window.open(url, "_blank");
+  }
 }
 
-export function compartilharWhatsApp(compra) {
+export async function compartilharWhatsApp(compra) {
+  const aba = window.open("", "_blank");
+  const empresa = await buscarEmpresa(compra);
   const num = String(compra.numero_recibo).padStart(4, "0");
   const data = new Date(compra.data_hora).toLocaleDateString("pt-BR");
 
@@ -161,13 +220,18 @@ export function compartilharWhatsApp(compra) {
     .join("\n");
 
   const msg = encodeURIComponent(
-    `*${EMPRESA.nome}* — Recibo Nº ${num}\n` +
+    `*${empresa.nome}* — Recibo Nº ${num}\n` +
       `📅 Data: ${data}\n` +
       (compra.cliente_nome ? `👤 Cliente: ${compra.cliente_nome}\n` : "") +
       `\n*Materiais:*\n${itens}\n\n` +
       `*TOTAL: R$${Number(compra.valor_total).toFixed(2)}*\n\n` +
-      `${EMPRESA.telefone}`,
+      `${empresa.telefone}`,
   );
 
-  window.open(`https://wa.me/?text=${msg}`, "_blank");
+  const url = `https://wa.me/?text=${msg}`;
+  if (aba) {
+    aba.location.href = url;
+  } else {
+    window.open(url, "_blank");
+  }
 }
