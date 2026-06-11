@@ -127,6 +127,13 @@ export async function createCompra({
 }
 
 export async function deleteCompra(id) {
+  const { error: errFinanceiro } = await supabase
+    .from("financeiro")
+    .delete()
+    .eq("compra_id", id);
+
+  if (errFinanceiro) throw errFinanceiro;
+
   const { error } = await supabase.from("compras").delete().eq("id", id);
   if (error) throw error;
 }

@@ -55,7 +55,7 @@ CREATE TABLE financeiro (
   categoria TEXT NOT NULL,
   valor DECIMAL(10,2) NOT NULL,
   descricao TEXT,
-  compra_id UUID REFERENCES compras(id) ON DELETE SET NULL,
+  compra_id UUID REFERENCES compras(id) ON DELETE CASCADE,
   data_hora TIMESTAMPTZ DEFAULT NOW(),
   criado_em TIMESTAMPTZ DEFAULT NOW()
 );
