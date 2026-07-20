@@ -28,6 +28,39 @@ export default function Financeiro() {
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
 
+  function formatDateInput(date) {
+    return date.toISOString().slice(0, 10);
+  }
+
+  function getPeriodoRange(tipo) {
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    if (tipo === "ontem") {
+      const ontem = new Date(hoje);
+      ontem.setDate(ontem.getDate() - 1);
+      return { inicio: ontem, fim: ontem };
+    }
+
+    if (tipo === "semana") {
+      const inicio = new Date(hoje);
+      const diaSemana = inicio.getDay();
+      const deslocamento = diaSemana === 0 ? 6 : diaSemana - 1; // segunda-feira
+      inicio.setDate(inicio.getDate() - deslocamento);
+      const fim = new Date(inicio);
+      fim.setDate(fim.getDate() + 6);
+      return { inicio, fim };
+    }
+
+    return { inicio: hoje, fim: hoje };
+  }
+
+  function aplicarPeriodo(tipo) {
+    const range = getPeriodoRange(tipo);
+    setDataInicio(formatDateInput(range.inicio));
+    setDataFim(formatDateInput(range.fim));
+  }
+
   // Formulário despesa
   const [descDespesa, setDescDespesa] = useState("");
   const [valorDespesa, setValorDespesa] = useState("");
@@ -137,7 +170,33 @@ export default function Financeiro() {
       </div>
 
       {/* Filtro de período */}
-      <div className="card card-body">
+      <div className="card card-body space-y-3">
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => aplicarPeriodo("ontem")}
+            className="px-3 py-2 text-sm font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
+          >
+            Ontem
+          </button>
+          <button
+            type="button"
+            onClick={() => aplicarPeriodo("semana")}
+            className="px-3 py-2 text-sm font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
+          >
+            Esta semana
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setDataInicio("");
+              setDataFim("");
+            }}
+            className="px-3 py-2 text-sm font-medium rounded-md bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
+          >
+            Limpar
+          </button>
+        </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="label text-xs">De</label>
