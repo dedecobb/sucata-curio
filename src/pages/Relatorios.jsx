@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getComprasPorMaterial, getFinanceiro, getVendas } from "../lib/db";
+import { getComprasPorMaterial, getFinanceiro } from "../lib/db";
 import {
   BarChart,
   Bar,
@@ -90,13 +90,28 @@ export default function Relatorios() {
   const [dataFim, setDataFim] = useState("");
   const [porMaterial, setPorMaterial] = useState([]);
   const [financeiro, setFinanceiro] = useState([]);
-  const [vendas, setVendas] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const aplicarPeriodo = (tipo) => {
     const range = getPeriodoRange(tipo);
     setDataInicio(formatDateInput(range.inicio));
     setDataFim(formatDateInput(range.fim));
+  };
+
+  const retrocederSemana = () => {
+    const inicio = dataInicio
+      ? new Date(dataInicio + "T00:00:00")
+      : getPeriodoRange(7).inicio;
+    const fim = dataFim
+      ? new Date(dataFim + "T23:59:59")
+      : getPeriodoRange(7).fim;
+
+    inicio.setDate(inicio.getDate() - 7);
+    fim.setDate(fim.getDate() - 7);
+
+    setDataInicio(formatDateInput(inicio));
+    setDataFim(formatDateInput(fim));
+    setPeriodo(null);
   };
 
   useEffect(() => {
@@ -112,14 +127,12 @@ export default function Relatorios() {
           filtros.dataFim = range.fim.toISOString();
         }
 
-        const [materiais, fin, vendasDados] = await Promise.all([
+        const [materiais, fin] = await Promise.all([
           getComprasPorMaterial(filtros),
           getFinanceiro(filtros),
-          getVendas(filtros),
         ]);
         setPorMaterial(materiais);
         setFinanceiro(fin);
-        setVendas(vendasDados);
       } catch (e) {
         console.error(e);
       } finally {
@@ -139,7 +152,6 @@ export default function Relatorios() {
     (s, m) => s + Number(m.totalKg),
     0,
   );
-  const totalKgVendido = vendas.reduce((s, v) => s + Number(v.peso_kg), 0);
 
   const top5 = porMaterial.slice(0, 5);
 
@@ -188,7 +200,14 @@ export default function Relatorios() {
             onClick={() => aplicarPeriodo(7)}
             className="px-3 py-2 text-sm font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
           >
-            Semana
+            Semana atual
+          </button>
+          <button
+            type="button"
+            onClick={retrocederSemana}
+            className="px-3 py-2 text-sm font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
+          >
+            Semana anterior
           </button>
           <button
             type="button"
@@ -258,16 +277,10 @@ export default function Relatorios() {
                 {fmt(totalEntradas - totalSaidas)}
               </p>
             </div>
-            <div className="card p-3 text-center">
+            <div className="card p-3 text-center md:col-span-2 xl:col-span-1">
               <p className="text-xs text-gray-500">KG comprado</p>
               <p className="font-bold text-indigo-600 text-sm mt-1">
                 {totalKgComprado.toFixed(1)} kg
-              </p>
-            </div>
-            <div className="card p-3 text-center md:col-span-2 xl:col-span-1">
-              <p className="text-xs text-gray-500">KG vendido</p>
-              <p className="font-bold text-indigo-600 text-sm mt-1">
-                {totalKgVendido.toFixed(1)} kg
               </p>
             </div>
           </div>
