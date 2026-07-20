@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { getComprasPorMaterial, getFinanceiro } from "../lib/db";
 import {
   BarChart,
@@ -96,9 +97,10 @@ export default function Relatorios() {
     const range = getPeriodoRange(tipo);
     setDataInicio(formatDateInput(range.inicio));
     setDataFim(formatDateInput(range.fim));
+    setPeriodo(null);
   };
 
-  const retrocederSemana = () => {
+  const moverSemana = (dias) => {
     const inicio = dataInicio
       ? new Date(dataInicio + "T00:00:00")
       : getPeriodoRange(7).inicio;
@@ -106,8 +108,8 @@ export default function Relatorios() {
       ? new Date(dataFim + "T23:59:59")
       : getPeriodoRange(7).fim;
 
-    inicio.setDate(inicio.getDate() - 7);
-    fim.setDate(fim.getDate() - 7);
+    inicio.setDate(inicio.getDate() + dias);
+    fim.setDate(fim.getDate() + dias);
 
     setDataInicio(formatDateInput(inicio));
     setDataFim(formatDateInput(fim));
@@ -154,6 +156,7 @@ export default function Relatorios() {
   );
 
   const top5 = porMaterial.slice(0, 5);
+  const entradasDetalhadas = financeiro.filter((r) => r.tipo === "entrada");
 
   const pieData = [
     { name: "Entradas", value: totalEntradas },
@@ -204,10 +207,19 @@ export default function Relatorios() {
           </button>
           <button
             type="button"
-            onClick={retrocederSemana}
-            className="px-3 py-2 text-sm font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
+            onClick={() => moverSemana(-7)}
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
           >
+            <ChevronLeft className="w-4 h-4" />
             Semana anterior
+          </button>
+          <button
+            type="button"
+            onClick={() => moverSemana(7)}
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
+          >
+            Semana seguinte
+            <ChevronRight className="w-4 h-4" />
           </button>
           <button
             type="button"
@@ -347,6 +359,64 @@ export default function Relatorios() {
                   <Tooltip formatter={(v) => fmt(v)} />
                 </PieChart>
               </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Tabela de entradas detalhadas */}
+          <div className="card">
+            <div className="card-header">
+              <h2 className="font-semibold text-gray-900 text-sm">
+                Entradas detalhadas
+              </h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="text-left px-4 py-2 text-xs text-gray-500 font-medium">
+                      Descrição
+                    </th>
+                    <th className="text-left px-4 py-2 text-xs text-gray-500 font-medium">
+                      Categoria
+                    </th>
+                    <th className="text-right px-4 py-2 text-xs text-gray-500 font-medium">
+                      Data
+                    </th>
+                    <th className="text-right px-4 py-2 text-xs text-gray-500 font-medium">
+                      Valor
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {entradasDetalhadas.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={4}
+                        className="px-4 py-6 text-center text-sm text-gray-400"
+                      >
+                        Nenhuma entrada no período.
+                      </td>
+                    </tr>
+                  ) : (
+                    entradasDetalhadas.map((r) => (
+                      <tr key={r.id}>
+                        <td className="px-4 py-2 text-gray-700">
+                          {r.descricao}
+                        </td>
+                        <td className="px-4 py-2 text-gray-600">
+                          {r.categoria}
+                        </td>
+                        <td className="px-4 py-2 text-right text-gray-600">
+                          {new Date(r.data_hora).toLocaleDateString("pt-BR")}
+                        </td>
+                        <td className="px-4 py-2 text-right font-bold text-green-600">
+                          {fmt(r.valor)}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
 

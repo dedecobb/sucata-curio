@@ -1,5 +1,12 @@
 import { useState, useEffect } from "react";
-import { Plus, TrendingUp, TrendingDown, DollarSign } from "lucide-react";
+import {
+  Plus,
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { getFinanceiro, createDespesa, createEntrada } from "../lib/db";
 
 function fmt(v) {
@@ -59,6 +66,21 @@ export default function Financeiro() {
     const range = getPeriodoRange(tipo);
     setDataInicio(formatDateInput(range.inicio));
     setDataFim(formatDateInput(range.fim));
+  }
+
+  function moverSemana(dias) {
+    const inicioBase = dataInicio
+      ? new Date(dataInicio + "T00:00:00")
+      : getPeriodoRange("semana").inicio;
+    const fimBase = dataFim
+      ? new Date(dataFim + "T23:59:59")
+      : getPeriodoRange("semana").fim;
+
+    inicioBase.setDate(inicioBase.getDate() + dias);
+    fimBase.setDate(fimBase.getDate() + dias);
+
+    setDataInicio(formatDateInput(inicioBase));
+    setDataFim(formatDateInput(fimBase));
   }
 
   // Formulário despesa
@@ -184,7 +206,23 @@ export default function Financeiro() {
             onClick={() => aplicarPeriodo("semana")}
             className="px-3 py-2 text-sm font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
           >
-            Esta semana
+            Semana atual
+          </button>
+          <button
+            type="button"
+            onClick={() => moverSemana(-7)}
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Semana anterior
+          </button>
+          <button
+            type="button"
+            onClick={() => moverSemana(7)}
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
+          >
+            Semana seguinte
+            <ChevronRight className="w-4 h-4" />
           </button>
           <button
             type="button"
